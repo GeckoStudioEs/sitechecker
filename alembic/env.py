@@ -1,4 +1,9 @@
 from logging.config import fileConfig
+import os
+import sys
+
+# Añadir el directorio raíz del proyecto al path de Python
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool

@@ -3,6 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import auth, projects, domains
+# Comentar estas importaciones hasta resolver los problemas de dependencias
+from app.api.endpoints.audit import router as audit_router
+from app.api.endpoints.monitoring import router as monitoring_router
+from app.api.endpoints.keywords import router as keywords_router
+
 from app.core.config import settings
 from app.db.database import engine, Base
 
@@ -25,10 +30,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir routers
+# Incluir routers existentes
 app.include_router(auth.router, tags=["auth"])
 app.include_router(projects.router, tags=["projects"])
 app.include_router(domains.router, tags=["domains"])
+
+# Comentar temporalmente hasta resolver problemas de importación
+app.include_router(audit_router, prefix="/projects", tags=["audit"])
+app.include_router(monitoring_router, prefix="/projects", tags=["monitoring"])
+app.include_router(keywords_router, prefix="/projects", tags=["keywords"])
 
 @app.get("/", tags=["root"])
 async def root():

@@ -8,17 +8,21 @@ from sqlalchemy.orm import relationship
 
 from app.db.database import Base
 
-# Tabla intermedia para la relación many-to-many entre usuarios y proyectos
-project_user = Table(
-    "project_permission",
-    Base.metadata,
-    Column("id", Integer, primary_key=True, index=True),
-    Column("project_id", Integer, ForeignKey("project.id", ondelete="CASCADE")),
-    Column("user_id", Integer, ForeignKey("user.id", ondelete="CASCADE")),
-    Column("permission_level", String(20), nullable=False),  # view, edit, admin
-    Column("created_at", DateTime, default=datetime.utcnow),
-    Column("created_by", Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True),
-)
+# Definimos ProjectPermission como clase
+class ProjectPermission(Base):
+    __tablename__ = "project_permission"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"))
+    permission_level = Column(String(20), nullable=False)  # view, edit, admin
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
+    
+    # Relaciones
+    project = relationship("Project", foreign_keys=[project_id], back_populates="permissions")
+    user = relationship("User", foreign_keys=[user_id], back_populates="project_permissions")
+    creator = relationship("User", foreign_keys=[created_by])
 
 class User(Base):
     __tablename__ = "user"
@@ -35,12 +39,8 @@ class User(Base):
     settings = Column(JSON, nullable=True)
 
     # Relaciones
-    projects = relationship(
-        "Project",
-        secondary=project_user,
-        back_populates="users"
-    )
-    owned_projects = relationship("Project", back_populates="owner")
+    owned_projects = relationship("Project", foreign_keys="Project.owner_id", back_populates="owner")
+    project_permissions = relationship("ProjectPermission", foreign_keys="ProjectPermission.user_id", back_populates="user")
 
 class Project(Base):
     __tablename__ = "project"
@@ -58,12 +58,8 @@ class Project(Base):
     credits_balance = Column(Integer, default=100)
 
     # Relaciones
-    owner = relationship("User", back_populates="owned_projects")
-    users = relationship(
-        "User",
-        secondary=project_user,
-        back_populates="projects"
-    )
+    owner = relationship("User", foreign_keys=[owner_id], back_populates="owned_projects")
+    permissions = relationship("ProjectPermission", back_populates="project", cascade="all, delete-orphan")
     google_integrations = relationship("GoogleIntegration", back_populates="project", cascade="all, delete-orphan")
     site_audits = relationship("SiteAudit", back_populates="project", cascade="all, delete-orphan")
     pages = relationship("Page", back_populates="project", cascade="all, delete-orphan")
@@ -72,6 +68,7 @@ class Project(Base):
     competitors = relationship("Competitor", back_populates="project", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="project", cascade="all, delete-orphan")
     segments = relationship("Segment", back_populates="project", cascade="all, delete-orphan")
+    keyword_groups = relationship("KeywordGroup", back_populates="project", cascade="all, delete-orphan")
 
 class GoogleIntegration(Base):
     __tablename__ = "google_integration"
@@ -201,6 +198,23 @@ class SiteMonitoring(Base):
     # Relaciones
     project = relationship("Project", back_populates="site_monitorings")
 
+# Definir KeywordGroup antes de Keyword para evitar referencias circulares
+class KeywordGroup(Base):
+    __tablename__ = "keyword_group"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("project.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
+
+    # Relaciones
+    project = relationship("Project", back_populates="keyword_groups")
+    creator = relationship("User", foreign_keys=[created_by])
+    keywords = relationship("Keyword", back_populates="group")
+
 class Keyword(Base):
     __tablename__ = "keyword"
 
@@ -215,13 +229,14 @@ class Keyword(Base):
     cpc = Column(Float, nullable=True)
     competition = Column(Float, nullable=True)  # 0-1
     target_url = Column(Text, nullable=True)
-    group_id = Column(Integer, nullable=True)
+    group_id = Column(Integer, ForeignKey("keyword_group.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
 
     # Relaciones
     project = relationship("Project", back_populates="keywords")
     positions = relationship("KeywordPosition", back_populates="keyword", cascade="all, delete-orphan")
+    group = relationship("KeywordGroup", back_populates="keywords")
 
 class KeywordPosition(Base):
     __tablename__ = "keyword_position"

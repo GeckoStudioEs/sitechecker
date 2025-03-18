@@ -1,9 +1,13 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseSettings, validator, PostgresDsn
+from pydantic import field_validator, model_validator, computed_field, PostgresDsn
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
+    # Aplicación
+    APP_NAME: str = "SEO Analyzer"
+    
     # Entorno
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
@@ -15,7 +19,23 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = ["*"]
     
     # Database
-    DATABASE_URL: PostgresDsn
+    DATABASE_URL: str
+    
+    # Alias para mantener compatibilidad
+    @computed_field
+    @property
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
+        return self.DATABASE_URL
+    
+    @computed_field
+    @property
+    def API_V1_STR(self) -> str:
+        return self.API_V1_PREFIX
+    
+    @computed_field
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        return self.ALLOWED_ORIGINS
     
     # Redis
     REDIS_URL: str
@@ -32,6 +52,27 @@ class Settings(BaseSettings):
     TIMEOUT: int = 30
     DELAY: float = 0.5
     MAX_PARALLEL_REQUESTS: int = 5
+    
+    # Aliases para mantener compatibilidad
+    @computed_field
+    @property
+    def CRAWLER_USER_AGENT(self) -> str:
+        return self.USER_AGENT
+    
+    @computed_field
+    @property
+    def CRAWLER_MAX_RETRIES(self) -> int:
+        return self.MAX_RETRIES
+    
+    @computed_field
+    @property
+    def CRAWLER_DEFAULT_TIMEOUT(self) -> int:
+        return self.TIMEOUT
+    
+    @computed_field
+    @property
+    def CRAWLER_MAX_PARALLEL_REQUESTS(self) -> int:
+        return self.MAX_PARALLEL_REQUESTS
     
     # Email
     EMAIL_BACKEND: str
@@ -52,9 +93,11 @@ class Settings(BaseSettings):
     MAX_KEYWORDS_FREE: int = 100
     MAX_COMPETITORS: int = 5
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True,
+        "extra": "ignore"  # Permitir campos extra
+    }
 
 # Instancia de configuración global
 settings = Settings()

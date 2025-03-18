@@ -79,41 +79,20 @@ docker-compose up -d
 echo -e "${YELLOW}Esperando a que la base de datos esté lista...${NC}"
 sleep 5
 
-# Ejecutar las migraciones de Alembic
-echo -e "${BLUE}Ejecutando las migraciones de base de datos...${NC}"
-docker-compose exec app alembic upgrade head
+# Asegurarse de que las carpetas existan y tengan los permisos correctos
+echo -e "${BLUE}Preparando directorios...${NC}"
+docker-compose exec app mkdir -p /app/alembic/versions
+docker-compose exec app chmod -R 777 /app/alembic
+
+# Ejecutar las migraciones de base de datos o crear tablas directamente
+echo -e "${BLUE}Configurando la base de datos...${NC}"
+
+echo -e "${YELLOW}Inicializando la base de datos...${NC}"
+docker-compose exec app python -m app.db.init_db
 
 # Crear un usuario administrador si no existe
 echo -e "${BLUE}Verificando si existe un usuario administrador...${NC}"
-# Este comando ejecuta un script Python dentro del contenedor para crear un usuario admin
-docker-compose exec app python -c "
-from app.db.database import SessionLocal
-from app.db.models import User
-from app.core.security import get_password_hash
-import datetime
-
-db = SessionLocal()
-admin = db.query(User).filter(User.email == 'admin@example.com').first()
-
-if not admin:
-    print('Creando usuario administrador...')
-    admin_user = User(
-        email='admin@example.com',
-        password_hash=get_password_hash('admin123'),
-        first_name='Admin',
-        last_name='User',
-        role='admin',
-        is_active=True,
-        created_at=datetime.datetime.utcnow()
-    )
-    db.add(admin_user)
-    db.commit()
-    print('Usuario administrador creado correctamente.')
-else:
-    print('El usuario administrador ya existe.')
-
-db.close()
-"
+# Esta funcionalidad ahora está dentro de app.db.init_db
 
 echo -e "${GREEN}Proyecto inicializado correctamente.${NC}"
 echo -e "${GREEN}La API está disponible en: http://localhost:8000${NC}"

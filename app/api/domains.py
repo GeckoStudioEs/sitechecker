@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from app.db.database import get_db
 from app.db.models import Project, User
-from app.api.projects import check_project_permissions
+from app.utils.project_utils import check_project_permissions
 from app.schemas.domain import (
     Domain as DomainSchema,
     DomainCreate,
@@ -329,7 +329,7 @@ async def delete_domain(
     db: Session = Depends(get_db),
     domain_id: int,
     current_user: User = Depends(get_current_user)
-) -> Any:
+):
     """
     Elimina un dominio.
     """
@@ -352,5 +352,3 @@ async def delete_domain(
     # # Eliminar el dominio
     # db.delete(domain)
     # db.commit()
-    
-    return None
